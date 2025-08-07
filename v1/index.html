@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Personnel - Liquid Glass</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#57b5e7',
+                        secondary: '#8dd3c7'
+                    },
+                    borderRadius: {
+                        'none': '0px',
+                        'sm': '4px',
+                        DEFAULT: '8px',
+                        'md': '12px',
+                        'lg': '16px',
+                        'xl': '20px',
+                        '2xl': '24px',
+                        '3xl': '32px',
+                        'full': '9999px',
+                        'button': '8px'
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
+    <style>
+        :where([class^="ri-"])::before {
+            content: "\f3c2";
+        }
+
+        .grid-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .grid-overlay.active {
+            display: block;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
+            background: linear-gradient(135deg, #1c3119 0%, #2c2038 100%);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        .liquid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 30%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 30%),
+                radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 30%);
+            animation: liquidMove 20s ease-in-out infinite;
+            z-index: -1;
+        }
+
+        @keyframes liquidMove {
+
+            0%,
+            100% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+
+            33% {
+                transform: translate(30px, -30px) rotate(1deg);
+            }
+
+            66% {
+                transform: translate(-20px, 20px) rotate(-1deg);
+            }
+        }
+
+        .glass-block {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: move;
+            position: absolute;
+            width: calc(320px + 40px);
+            height: calc(160px + 40px);
+        }
+
+        .resize-handle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.2s, background-color 0.2s;
+        }
+
+        .glass-block:hover .resize-handle {
+            opacity: 1;
+        }
+
+        .resize-handle:hover {
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .resize-handle.top-left {
+            top: -6px;
+            left: -6px;
+            cursor: nw-resize;
+        }
+
+        .resize-handle.top-right {
+            top: -6px;
+            right: -6px;
+            cursor: ne-resize;
+        }
+
+        .resize-handle.bottom-left {
+            bottom: -6px;
+            left: -6px;
+            cursor: sw-resize;
+        }
+
+        .resize-handle.bottom-right {
+            bottom: -6px;
+            right: -6px;
+            cursor: se-resize;
+        }
+
+        .glass-block:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .glass-block.dragging {
+            transform: rotate(5deg) scale(1.02);
+            z-index: 1000;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .drag-handle {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .glass-block:hover .drag-handle {
+            opacity: 0.6;
+        }
+
+        .time-display {
+            font-size: 3rem;
+            font-weight: 300;
+            background: linear-gradient(135deg, #e4b3ee, #86c594);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: timeGlow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes timeGlow {
+            0% {
+                filter: brightness(1);
+            }
+
+            100% {
+                filter: brightness(1.2);
+            }
+        }
+
+        .date-text {
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .agenda-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid;
+            transition: all 0.2s;
+        }
+
+        .agenda-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(4px);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+        .border-l-primary { border-color: #3b82f6; }
+        .border-l-secondary { border-color: #10b981; }
+        .border-l-yellow-400 { border-color: #facc15; }
+        .border-l-pink-400 { border-color: #f472b6; }
+    </style>
+</head>
+
+<body>
+    <div class="liquid-bg"></div>
+    <div class="grid-overlay"></div>
+    <div id="dashboard" class="relative w-full h-screen overflow-hidden">
+        <!-- Bloc Horloge -->
+        <div id="clock-block" class="glass-block rounded-2xl p-6" style="top: 100px; left: 100px;">
+            <div class="resize-handle top-left"></div>
+            <div class="resize-handle top-right"></div>
+            <div class="resize-handle bottom-left"></div>
+            <div class="resize-handle bottom-right"></div>
+            <div class="drag-handle w-6 h-6 flex items-center justify-center">
+                <i class="ri-drag-move-line text-white text-lg"></i>
+            </div>
+            <div class="flex flex-col items-center justify-center h-full">
+                <div id="current-time" class="time-display">12:34:56</div>
+                <div class="text-white text-sm opacity-70 mt-2">Heure
+                    locale</div>
+            </div>
+        </div>
+        <!-- Bloc Date -->
+        <div id="date-block" class="glass-block rounded-2xl p-6 w-60 h-40" style="top: 100px; right: 100px;">
+            <div class="resize-handle top-left"></div>
+            <div class="resize-handle top-right"></div>
+            <div class="resize-handle bottom-left"></div>
+            <div class="resize-handle bottom-right"></div>
+            <div class="drag-handle w-6 h-6 flex items-center justify-center">
+                <i class="ri-drag-move-line text-white text-lg"></i>
+            </div>
+            <div class="flex flex-col items-center justify-center h-full">
+                <div id="current-day" class="date-text text-2xl font-light">Jeudi</div>
+                <div id="current-date" class="date-text text-lg mt-1">7 Août
+                    2025</div>
+                <div class="text-white text-sm opacity-50 mt-2">Aujourd'hui</div>
+            </div>
+        </div>
+        <!-- Bloc Agenda -->
+        <div id="agenda-block" class="glass-block rounded-2xl p-6 w-95 h-80" style="bottom: 100px; left: 100px;">
+        <div class="resize-handle top-left"></div>
+        <div class="resize-handle top-right"></div>
+        <div class="resize-handle bottom-left"></div>
+        <div class="resize-handle bottom-right"></div>
+        <div class="drag-handle w-6 h-6 flex items-center justify-center">
+            <i class="ri-drag-move-line text-white text-lg"></i>
+        </div>
+        <div class="h-full flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-white text-lg font-medium">Agenda du jour</h3>
+                <div class="w-6 h-6 flex items-center justify-center">
+                    <i class="ri-calendar-line text-white text-lg opacity-70"></i>
+                </div>
+            </div>
+            <div id="agenda-items" class="flex-1 overflow-y-auto custom-scrollbar space-y-3">
+                <!-- Les événements seront insérés ici dynamiquement -->
+            </div>
+            <div class="mt-4 pt-3 border-t border-white border-opacity-10">
+                <div class="text-white opacity-50 text-xs text-center">
+                    Synchronisé avec Google Calendar
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://apis.google.com/js/api.js"></script>
+<script>
+    function initGoogleClient() {
+        console.log('Initialisation de l\'API Google...');
+        gapi.load('client:auth2', () => {
+            gapi.client.init({
+                apiKey: 'AIzaSyALcH_F-iakS95RTw2YqoohbiZG595Fzsk',
+                clientId: '657915171663-8su69vo2gug5eptus5e06p8mbs963517.apps.googleusercontent.com',
+                discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
+                scope: 'https://www.googleapis.com/auth/calendar.readonly',
+            }).then(() => {
+                console.log('API Google initialisée avec succès.');
+                const authInstance = gapi.auth2.getAuthInstance();
+                if (authInstance.isSignedIn.get()) {
+                    console.log('Utilisateur connecté.');
+                    loadCalendarEvents();
+                } else {
+                    console.log('Utilisateur non connecté, ouverture de la fenêtre de connexion...');
+                    authInstance.signIn().then(() => {
+                        console.log('Connexion réussie.');
+                        loadCalendarEvents();
+                    }).catch(error => {
+                        console.error('Erreur lors de la connexion Google:', error);
+                        document.getElementById('agenda-items').innerHTML = '<div class="text-white text-sm">Erreur de connexion à Google Calendar. Veuillez réessayer.</div>';
+                    });
+                }
+            }).catch(error => {
+                console.error('Erreur d\'initialisation de l\'API Google:', error);
+                document.getElementById('agenda-items').innerHTML = '<div class="text-white text-sm">Erreur d\'initialisation de l\'API. Vérifiez la configuration.</div>';
+            });
+        });
+    }
+
+    function loadCalendarEvents() {
+        console.log('Chargement des événements...');
+        const today = new Date();
+        const timeMin = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+        const timeMax = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
+
+        gapi.client.calendar.events.list({
+            calendarId: 'primary',
+            timeMin: timeMin,
+            timeMax: timeMax,
+            showDeleted: false,
+            singleEvents: true,
+            orderBy: 'startTime',
+        }).then(response => {
+            console.log('Événements récupérés:', response.result.items);
+            const events = response.result.items;
+            const agendaItems = document.getElementById('agenda-items');
+            agendaItems.innerHTML = '';
+
+            if (events.length === 0) {
+                agendaItems.innerHTML = '<div class="text-white text-sm opacity-70">Aucun événement prévu aujourd\'hui.</div>';
+                return;
+            }
+
+            const borderClasses = ['border-l-primary', 'border-l-secondary', 'border-l-yellow-400', 'border-l-pink-400'];
+            let borderIndex = 0;
+
+            events.forEach(event => {
+                const start = new Date(event.start.dateTime || event.start.date);
+                const end = new Date(event.end.dateTime || event.end.date);
+                const timeString = `${start.getHours()}:${start.getMinutes().toString().padStart(2, '0')} - ${end.getHours()}:${end.getMinutes().toString().padStart(2, '0')}`;
+                const location = event.location || 'Non spécifié';
+
+                const eventDiv = document.createElement('div');
+                eventDiv.className = `agenda-item rounded-lg p-3 ${borderClasses[borderIndex]}`;
+                eventDiv.innerHTML = `
+                    <div class="text-white font-medium text-sm">${event.summary}</div>
+                    <div class="text-white opacity-60 text-xs mt-1">${timeString}</div>
+                    <div class="text-white opacity-50 text-xs">${location}</div>
+                `;
+                agendaItems.appendChild(eventDiv);
+
+                borderIndex = (borderIndex + 1) % borderClasses.length;
+            });
+        }).catch(error => {
+            console.error('Erreur lors du chargement des événements:', error);
+            document.getElementById('agenda-items').innerHTML = '<div class="text-white text-sm">Erreur lors du chargement des événements.</div>';
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOM chargé, initialisation de l\'API Google.');
+        initGoogleClient();
+    });
+</script>
+        <!-- Bloc Météo -->
+        <div id="weather-block" class="glass-block rounded-2xl p-6 w-60 h-50" style="bottom: 100px; right: 100px;">
+            <div class="resize-handle top-left"></div>
+            <div class="resize-handle top-right"></div>
+            <div class="resize-handle bottom-left"></div>
+            <div class="resize-handle bottom-right"></div>
+            <div class="drag-handle w-6 h-6 flex items-center justify-center">
+                <i class="ri-drag-move-line text-white text-lg"></i>
+            </div>
+            <div class="h-full flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-white text-lg font-medium">Météo</h3>
+                    <div class="w-8 h-8 flex items-center justify-center">
+                        <i class="ri-sun-line text-yellow-300 text-2xl"></i>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <div class="text-white text-4xl font-light mb-2">24°C</div>
+                    <div class="text-white opacity-70 text-sm">Ensoleillé</div>
+                </div>
+                <div class="flex justify-between text-xs text-white opacity-60">
+                    <span>Min: 18°C</span>
+                    <span>Max: 28°C</span>
+                </div>
+            </div>
+        </div>
+        <!-- Bloc Notes rapides -->
+        <div id="notes-block" class="glass-block rounded-2xl p-6 w-80 h-60"
+            style="top: 300px; left: 50%; transform: translateX(-50%);">
+            <div class="resize-handle top-left"></div>
+            <div class="resize-handle top-right"></div>
+            <div class="resize-handle bottom-left"></div>
+            <div class="resize-handle bottom-right"></div>
+            <div class="drag-handle w-6 h-6 flex items-center justify-center">
+                <i class="ri-drag-move-line text-white text-lg"></i>
+            </div>
+            <div class="h-full flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-white text-lg font-medium">Notes
+                        rapides</h3>
+                    <div class="w-6 h-6 flex items-center justify-center">
+                        <i class="ri-sticky-note-line text-white text-lg opacity-70"></i>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <textarea
+                        class="w-full h-full bg-transparent text-white placeholder-white placeholder-opacity-50 resize-none outline-none text-sm leading-relaxed"
+                        placeholder="Tapez vos notes ici...">
+                            • Préparer présentation projet Alpha
+• Acheter cadeau anniversaire Sophie
+• Rendez-vous médecin à programmer
+• Réviser budget marketing Q3</textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script id="clock-functionality">
+        function updateClock() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('fr-FR', {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('current-time').textContent = timeString;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
+    <script id="date-functionality">
+        function updateDate() {
+            const now = new Date();
+            const days = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+            const months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+            const dayName = days[now.getDay()];
+            const day = now.getDate();
+            const month = months[now.getMonth()];
+            const year = now.getFullYear();
+            document.getElementById('current-day').textContent = dayName;
+            document.getElementById('current-date').textContent = `${day} ${month} ${year}`;
+        }
+        updateDate();
+        setInterval(updateDate, 60000);
+    </script>
+    <script id="drag-drop-functionality">
+        let isDragging = false;
+        let isResizing = false;
+        let currentElement = null;
+        let currentHandle = null;
+        let offset = { x: 0, y: 0 };
+        let originalSize = { width: 0, height: 0 };
+        let originalPosition = { x: 0, y: 0 };
+        function initDragAndDrop() {
+            const blocks = document.querySelectorAll('.glass-block');
+            blocks.forEach(block => {
+                block.addEventListener('mousedown', startDrag);
+                const handles = block.querySelectorAll('.resize-handle');
+                handles.forEach(handle => {
+                    handle.addEventListener('mousedown', startResize);
+                });
+            });
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        }
+        function startResize(e) {
+            isResizing = true;
+            currentHandle = e.target;
+            currentElement = e.target.closest('.glass-block');
+            originalSize = {
+                width: currentElement.offsetWidth,
+                height: currentElement.offsetHeight
+            };
+            originalPosition = {
+                x: currentElement.offsetLeft,
+                y: currentElement.offsetTop
+            };
+            offset = {
+                x: e.clientX,
+                y: e.clientY
+            };
+            e.stopPropagation();
+            document.querySelector('.grid-overlay').classList.add('active');
+        }
+        function handleResize(e) {
+            if (!isResizing || !currentElement || !currentHandle) return;
+            const dx = e.clientX - offset.x;
+            const dy = e.clientY - offset.y;
+            const gridSize = 40;
+            let newWidth = originalSize.width;
+            let newHeight = originalSize.height;
+            let newLeft = originalPosition.x;
+            let newTop = originalPosition.y;
+            if (currentHandle.classList.contains('bottom-right') || currentHandle.classList.contains('bottom-left')) {
+                newHeight = Math.round((originalSize.height + dy) / gridSize) * gridSize;
+            }
+            if (currentHandle.classList.contains('top-right') || currentHandle.classList.contains('top-left')) {
+                const heightDiff = Math.round(dy / gridSize) * gridSize;
+                newHeight = Math.max(gridSize, originalSize.height - heightDiff);
+                newTop = originalPosition.y + (originalSize.height - newHeight);
+            }
+            if (currentHandle.classList.contains('bottom-right') || currentHandle.classList.contains('top-right')) {
+                newWidth = Math.round((originalSize.width + dx) / gridSize) * gridSize;
+            }
+            if (currentHandle.classList.contains('bottom-left') || currentHandle.classList.contains('top-left')) {
+                const widthDiff = Math.round(dx / gridSize) * gridSize;
+                newWidth = Math.max(gridSize, originalSize.width - widthDiff);
+                newLeft = originalPosition.x + (originalSize.width - newWidth);
+            }
+            const minWidth = gridSize * 4;
+            const minHeight = gridSize * 3;
+            newWidth = Math.max(minWidth, newWidth);
+            newHeight = Math.max(minHeight, newHeight);
+            currentElement.style.width = `${newWidth}px`;
+            currentElement.style.height = `${newHeight}px`;
+            currentElement.style.left = `${newLeft}px`;
+            currentElement.style.top = `${newTop}px`;
+        }
+        function handleMouseMove(e) {
+            if (isResizing) {
+                handleResize(e);
+            } else if (isDragging) {
+                drag(e);
+            }
+        }
+        function handleMouseUp() {
+            if (isResizing) {
+                isResizing = false;
+                currentHandle = null;
+                saveLayout();
+            }
+            if (isDragging) {
+                endDrag();
+            }
+            document.querySelector('.grid-overlay').classList.remove('active');
+        }
+        function startDrag(e) {
+            if (e.target.closest('.drag-handle') || e.target.classList.contains('glass-block')) {
+                isDragging = true;
+                currentElement = e.target.closest('.glass-block');
+                currentElement.classList.add('dragging');
+                const rect = currentElement.getBoundingClientRect();
+                offset.x = e.clientX - rect.left;
+                offset.y = e.clientY - rect.top;
+                e.preventDefault();
+            }
+        }
+        function drag(e) {
+            if (!isDragging || !currentElement) return;
+            const gridSize = 40;
+            document.querySelector('.grid-overlay').classList.add('active');
+            const containerWidth = window.innerWidth;
+            const elementWidth = currentElement.offsetWidth;
+            const x = e.clientX - offset.x;
+            const y = e.clientY - offset.y;
+            const maxX = containerWidth - elementWidth;
+            const maxY = window.innerHeight - currentElement.offsetHeight;
+            let constrainedX = Math.max(0, Math.min(x, maxX));
+            let constrainedY = Math.max(0, Math.min(y, maxY));
+            constrainedY = Math.round(constrainedY / gridSize) * gridSize;
+            const leftThreshold = containerWidth * 0.3;
+            const rightThreshold = containerWidth * 0.7;
+            const centerThreshold = containerWidth * 0.4;
+            if (x < leftThreshold) {
+                constrainedX = Math.round(constrainedX / gridSize) * gridSize;
+                currentElement.style.left = constrainedX + 'px';
+                currentElement.style.right = 'auto';
+                currentElement.style.transform = 'none';
+            } else if (x > rightThreshold) {
+                const fromRight = containerWidth - (x + elementWidth);
+                const snappedFromRight = Math.round(fromRight / gridSize) * gridSize;
+                currentElement.style.right = snappedFromRight + 'px';
+                currentElement.style.left = 'auto';
+                currentElement.style.transform = 'none';
+            } else if (Math.abs(x - (containerWidth / 2 - elementWidth / 2)) < centerThreshold) {
+                currentElement.style.left = '50%';
+                currentElement.style.right = 'auto';
+                currentElement.style.transform = 'translateX(-50%)';
+            } else {
+                constrainedX = Math.round(constrainedX / gridSize) * gridSize;
+                currentElement.style.left = constrainedX + 'px';
+                currentElement.style.right = 'auto';
+                currentElement.style.transform = 'none';
+            }
+            currentElement.style.top = constrainedY + 'px';
+            currentElement.style.bottom = 'auto';
+        }
+        function endDrag() {
+            if (currentElement) {
+                currentElement.classList.remove('dragging');
+                saveLayout();
+            }
+            document.querySelector('.grid-overlay').classList.remove('active');
+            isDragging = false;
+            currentElement = null;
+        }
+        function saveLayout() {
+            const blocks = document.querySelectorAll('.glass-block');
+            const layout = {};
+            blocks.forEach(block => {
+                layout[block.id] = {
+                    left: block.style.left,
+                    top: block.style.top,
+                    right: block.style.right,
+                    bottom: block.style.bottom,
+                    transform: block.style.transform,
+                    width: block.style.width,
+                    height: block.style.height
+                };
+            });
+            localStorage.setItem('dashboardLayout', JSON.stringify(layout));
+        }
+        function loadLayout() {
+            const saved = localStorage.getItem('dashboardLayout');
+            if (saved) {
+                const layout = JSON.parse(saved);
+                Object.keys(layout).forEach(blockId => {
+                    const block = document.getElementById(blockId);
+                    if (block) {
+                        const position = layout[blockId];
+                        block.style.left = position.left;
+                        block.style.top = position.top;
+                        block.style.right = position.right;
+                        block.style.bottom = position.bottom;
+                        block.style.transform = position.transform;
+                        block.style.width = position.width;
+                        block.style.height = position.height;
+                    }
+                });
+            }
+        }
+        initDragAndDrop();
+        loadLayout();
+    </script>
+    <script id="background-animation">
+        document.addEventListener('mousemove', (e) => {
+            const liquidBg = document.querySelector('.liquid-bg');
+            const x = (e.clientX / window.innerWidth) * 100;
+            const y = (e.clientY / window.innerHeight) * 100;
+            liquidBg.style.background = `
+radial-gradient(circle at ${x}% ${y}%, rgba(120, 119, 198, 0.4) 0%, transparent 50%),
+radial-gradient(circle at ${80 - x * 0.3}% ${20 + y * 0.3}%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+radial-gradient(circle at ${40 + x * 0.2}% ${40 - y * 0.2}%, rgba(120, 219, 255, 0.2) 0%, transparent 50%)
+`;
+        });
+    </script>
+</body>
+
+</html>
